@@ -1,0 +1,322 @@
+/* ============================================================
+   Gofileサムネイルギャラリー (docs/refs/gofile-thumbnail-gallery-spec.md §9)
+
+   単体機能で他画面と共有するクラスが無いため、1ファイルにまとめる
+   （media.css / files.css のような @import の束は今のところ不要）。
+   使うのは routes/GofileGallery.tsx と routes/gofile/Card.tsx だけ。
+
+   カードは「サムネイル + 題 + 補足」の裸の並び（M3 の card に包まない。
+   2列で額縁を付けると額縁だらけになる）。写真の上に乗るもの（暗幕・
+   外部遷移の印・アバターの縁・保存ボタン）だけはテーマに追従させず、
+   常に「暗い地に白」で固定する（app.css の .glassbtn / .tile__badge と同じ作法）。
+   ============================================================ */
+
+.gofile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-4) var(--s-10);
+}
+
+/* URL貼り付け→保存。任意のgofile.ioリンクを直接保存する入力欄+ボタン */
+.gofile__paste {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.gofile__paste .input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 最終更新日時 + 手動更新ボタン (§9.4) */
+.gofile__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.gofile__synced {
+  font-size: var(--t-body-m);
+  line-height: var(--lh-body-m);
+}
+
+/* 32px高の.btn--smに22pxの裸アイコンは大きすぎるので縮める
+   （.gofile__ext と同じ、コンテナ単位でtabbar__iconを上書きする作法） */
+.gofile__bar .btn .tabbar__icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---------------------------------------------------------- グリッド (§9.1)
+
+   スマホ2列・タブレット3〜4列・PC5〜6列。列数を固定にするのは、
+   auto-fill だと横幅によってタイルの大きさがなだらかに変わり続けて
+   「今何列で見ているか」が読めなくなるため（きっちり段組みにする） */
+.gofile__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--s-3);
+}
+
+@media (min-width: 520px) {
+  .gofile__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ★4列で打ち止め★（2026-09-03）
+   段組みの幅は .app の max-width（720px）で頭打ちになるのに、@media は
+   **ウィンドウ幅**を見る。PC でウィンドウを広げると、720px の箱の中で
+   列だけが 5・6 と増えて 16:9 のサムネが 112×63px まで縮んでいた
+   （「広げるほど小さくなる」）。箱が広がらない以上、列も増やさない */
+@media (min-width: 721px) {
+  .gofile__grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ---------------------------------------------------------- カード (§9.2) */
+
+/* 地を持たないカードなので、状態レイヤーを敷く面が無い。
+   ★opacity で透かさない★（指針 §8 の絶対規則）。カードの主役は
+   16:9 のサムネで、その上ではテーマ追従の --pressed-on-surface が消える。
+   写真の上に乗るものと同じ作法（テーマに追従しない暗幕）を ::after で重ねる。
+   色は手書きせず scrim の色を 12% に薄めて使う。
+   ★pointer-events: none★ カードの中には <a> と保存ボタンが居るので、
+   暗幕が指を吸うと押せなくなる。★この ::after を消さないこと★ */
+.gofile__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.gofile__card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--shape-md);
+  background-color: transparent;
+  pointer-events: none;
+  transition: background-color var(--d-tap) var(--ease-effects);
+}
+
+.gofile__card.is-pressed::after {
+  background-color: rgb(var(--scrim-rgb) / 0.12);
+}
+
+.gofile__cardlink {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-width: 0;
+  text-decoration: none;
+  color: var(--on-surface);
+}
+
+/* 長押し→保存 (§9.2の外側)。サムネイルと同じ矩形を覆う暗幕 + 中央のボタン。
+   M3 の scrim（32%）では写真の上でボタンが読めないので 60% まで濃くする */
+.gofile__savescrim {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  aspect-ratio: 16 / 9;
+  display: grid;
+  place-items: center;
+  border-radius: var(--shape-md);
+  background: rgb(var(--scrim-rgb) / 0.6);
+}
+
+/* 暗幕の上の filled button。押すと丸→角丸へ形が変わり、黒の状態レイヤーが乗る。
+   ★ここだけトークンを使わない★ 背後は必ず暗幕なので、テーマに関係なく白 */
+.gofile__savebtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 40px;
+  padding: 0 var(--s-5);
+  border: 0;
+  border-radius: var(--shape-full);
+  background: #fff;
+  color: #0c0e11;
+  font-size: var(--t-label-l);
+  line-height: var(--lh-label-l);
+  font-weight: var(--w-medium);
+  --save-layer: transparent;
+  box-shadow: inset 0 0 0 999px var(--save-layer);
+  transition:
+    border-radius var(--d-spatial-fast) var(--ease-spatial-fast),
+    box-shadow var(--d-tap) var(--ease-effects);
+}
+
+.gofile__savebtn .tabbar__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.gofile__savebtn.is-pressed {
+  border-radius: var(--shape-md);
+  --save-layer: rgb(0 0 0 / 0.1);
+}
+
+.gofile__thumbwrap {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--shape-md);
+  overflow: hidden;
+  background: var(--surface-highest);
+}
+
+.gofile__thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 外部サイトへ遷移することを示す印 (§9.2)。写真の上なので暗い地に白で固定 */
+.gofile__ext {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--shape-full);
+  background: rgb(var(--scrim-rgb) / 0.55);
+  color: #fff;
+}
+
+.gofile__ext .tabbar__icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* 投稿者アバター (Card.tsx)。.gofile__savescrim と同じ理由（<a>の中に
+   <button>を置けない）で <a> の外、.gofile__card 直下に絶対配置で重ねる。
+   .gofile__ext と左右対称（右下=外部遷移の印、左下=投稿者） */
+.gofile__avatarzone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  aspect-ratio: 16 / 9;
+  pointer-events: none;
+}
+
+.gofile__avatar {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  /* 縁は写真の上に乗るので白で固定 */
+  border: 1.5px solid rgb(255 255 255 / 0.85);
+  border-radius: var(--shape-full);
+  background: var(--surface-highest);
+  pointer-events: auto;
+}
+
+/* ★見た目は 22px のまま、当たり判定だけ 48px に広げる★（指針 §3）
+   -13px は「22 + 13 × 2 = 48」の逆算。サムネの左下という**角**に置いた
+   22px の的は、実機では隣の <a>（カードを開く）に取られて押せなかった。
+   ★この ::after を消さないこと★ 消すと的が 22px に戻る。
+   ★overflow: hidden を戻さないこと★ 親で切ると ::after ごと切り落とされて
+   当たり判定が広がらない。丸く切り抜くのは下の img 自身の border-radius */
+.gofile__avatar::after {
+  content: '';
+  position: absolute;
+  inset: -13px;
+}
+
+/* 押下の状態レイヤー。写真の上なので scrim の色で暗幕を重ねる（透かさない） */
+.gofile__avatar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: var(--shape-full);
+  background-color: transparent;
+  pointer-events: none;
+  transition: background-color var(--d-tap) var(--ease-effects);
+}
+
+.gofile__avatar.is-pressed::before {
+  background-color: rgb(var(--scrim-rgb) / 0.24);
+}
+
+.gofile__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* 親の overflow: hidden をやめたので、丸めは絵の側で持つ */
+  border-radius: var(--shape-full);
+}
+
+/* 投稿者別一覧(AccountView.tsx)の見出しに置く、カード上のバッジより
+   一回り大きい版。.section__head は align-items:baseline なので中央寄せする */
+.gofile__accountavatar {
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--shape-full);
+  object-fit: cover;
+  background: var(--surface-highest);
+}
+
+/* 題 = title-small（14/500）。2行で止める */
+.gofile__title {
+  font-size: var(--t-title-s);
+  line-height: var(--lh-title-s);
+  font-weight: var(--w-medium);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  /* 題は投稿者が付けた文字列で、空白の無い長い英字（URL・ファイル名）が
+     普通に来る。line-clamp は行数を止めるだけで横には効かないので、
+     折り返し先を作っておかないと 2 行のうち 1 行目が切れて終わる */
+  overflow-wrap: anywhere;
+  /* ★1行の題でも2行ぶんの高さを取る★（2026-09-04）
+     2列のグリッドは1枚ずつ高さが決まるので、題が1行の札と2行の札が
+     隣り合うと日付・件数・容量の行が段違いになり、一覧がガタつく
+     （撮って発見）。行数の上限と同じ高さを常に確保して揃える */
+  min-height: calc(2 * var(--lh-title-s));
+}
+
+/* 補足（日付・件数・容量）= body-small を on-surface-variant で */
+.gofile__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--s-2);
+  font-size: var(--t-body-s);
+  line-height: var(--lh-body-s);
+  color: var(--on-surface-variant);
+}
+
+.gofile__meta > span + span::before {
+  content: '·';
+  margin-right: var(--s-2);
+}
+
+/* ---------------------------------------------------------- 読み込み中の骨 */
+
+.gofile__card--skel {
+  pointer-events: none;
+}
+
+.gofile__thumb--skel {
+  width: 100%;
+  height: 100%;
+  background: var(--surface-highest);
+}

@@ -1,0 +1,13 @@
+# gofile-worker コンテナ専用。api イメージには入れない
+# （§14.1・§14.7: Playwright(Chromium同梱)は既存アプリと別コンテナに分離する）。
+#
+# ★requirements.txt を丸ごと -r しない★
+# app/gofile/*.py と app/db.py・app/config.py が実際に import するのは
+# httpx と playwright だけ（fastapi・pydantic・argon2・pillow・rapidocr・
+# onnxruntime 等は api コンテナ専用の依存で、worker には要らない）。
+# 丸ごと取り込むとビルドが重くなるだけでなく、不要な apt 依存
+# （libheif1 等）まで足すことになり、§14 の軽量方針に反する。
+httpx==0.28.1
+
+# Arm64 Linux 対応版を使う (§14.1)。Chromium だけを導入する
+playwright==1.61.0

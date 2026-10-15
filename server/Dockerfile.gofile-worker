@@ -1,0 +1,35 @@
+# gofile-worker: Playwright(Chromium同梱)でGofileのリンク切れを検証する専用コンテナ。
+#
+# ★api コンテナ(Dockerfile)には入れない★ §14.1・§14.7 の方針:
+# Playwrightと既存アプリは別コンテナに分離する。api イメージを太らせず、
+# Chromiumのクラッシュやメモリ膨張がapi(写真・家計・チャット)を巻き込まない
+# ようにする。DBファイル(kakei_db)は api と共有する（docker-compose.yml参照）。
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+WORKDIR /srv
+
+COPY requirements-gofile-worker.txt .
+RUN pip install --no-cache-dir -r requirements-gofile-worker.txt
+
+# Chromiumだけを導入する (§14.1)。--with-deps が要る apt 依存も一緒に入れて、
+# 使い終わったら apt キャッシュを捨てる（イメージを太らせない）
+RUN playwright install --with-deps chromium \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY app ./app
+
+# 非rootユーザーで動かす (§14.7)。Chromiumのブラウザサンドボックスは
+# root では使えない（app/gofile/linkcheck.py が root 実行時だけ
+# --no-sandbox を補う作りにしてあるが、既定はこちらの非root経路）
+RUN useradd -u 1000 -m app || true \
+ && chown -R app:app /ms-playwright
+USER app
+
+# HTTPサーバではない。30分ジョブを回し続けるだけの常駐プロセス
+# (app/gofile/scheduler.py の run_forever)
+CMD ["python", "-m", "app.gofile.worker_main"]

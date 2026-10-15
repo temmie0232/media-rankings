@@ -1,0 +1,11 @@
+# このリポジトリのサーバ側が import する外部パッケージ（nas-app の requirements.txt から該当分だけ。版は同じ）。
+# Gofile の worker（Playwright）だけは別 → requirements-gofile-worker.txt
+fastapi==0.116.1
+pydantic==2.11.7
+httpx==0.28.1
+
+# 「URL から保存」（urlfetch.py）。サイト側の変更で壊れやすいので、取れなくなったらまずここを上げる
+yt-dlp==2026.8.19
+
+# テスト
+pytest

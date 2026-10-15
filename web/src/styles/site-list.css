@@ -1,0 +1,216 @@
+/* nas-app の styles/media-hub.css（.tm* ＝ Tokyomotion / 85po の一覧）、styles/media-shell.css（.ufetch* ＝ URL から保存のシート）、
+ * styles/app.css（.upload__bar/.upload__fill ＝ 進捗バー）から抜いたもの。
+ * カードの形は gofile.css の .gofile__card を共用する。トークン（--s-* --primary --shape-* --t-* …）は M3 Expressive 版の tokens.css が前提。
+ * ホストに同名のトークンが無ければ、AGENTS.md「CSS」の読み替えを見る。 */
+
+/* ---------------------------------------------------------- Tokyomotion
+   カードの形は Gofile と同じ（.gofile__card）。違うのは保存ボタンと再生時間の札 */
+
+.tm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-4) var(--s-10);
+}
+.tm__top {
+  display: flex;
+  justify-content: flex-end;
+}
+/* チップ帯は上下 8px の当たり判定を抱えているので、帯どうしを詰める */
+.tm__chips {
+  padding-block: 2px;
+  margin-inline: calc(var(--s-4) * -1);
+  padding-inline: var(--s-4);
+}
+.tm .gofile__grid {
+  margin-top: var(--s-2);
+}
+
+/* サムネの上に乗る札。写真の上なので、テーマに追従しない固定の黒/白で塗る */
+.tm__dur,
+.tm__hd {
+  position: absolute;
+  bottom: 6px;
+  padding: 1px 6px;
+  border-radius: var(--shape-xs, 4px);
+  background: rgb(0 0 0 / 0.72);
+  color: #fff;
+  font-size: var(--t-label-s);
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.tm__dur {
+  right: 6px;
+}
+.tm__hd {
+  left: 6px;
+  letter-spacing: 0.04em;
+}
+
+/* 保存ボタン = サムネの右上の丸。<a> の外（カード直下）に重ねる。
+   44px の当たり判定を確保し、見た目の円は 32px */
+.tm__save {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: #fff;
+}
+.tm__save::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: var(--shape-full);
+  background: rgb(0 0 0 / 0.55);
+}
+.tm__save > * {
+  position: relative;
+}
+.tm__save .tabbar__icon {
+  width: 18px;
+  height: 18px;
+}
+.tm__save--done::before {
+  background: var(--primary);
+}
+.tm__save--done {
+  color: var(--on-primary);
+}
+.tm__save:disabled {
+  cursor: default;
+}
+
+/* URL から保存（routes/media/UrlFetch.tsx）。シートの中の行 */
+.ufetch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: var(--s-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ufetch__input {
+  min-height: 96px;
+  resize: none;
+}
+.ufetch__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--shape-lg);
+  background: var(--surface-high);
+}
+.ufetch__row--err {
+  background: var(--error-container);
+  color: var(--on-error-container);
+}
+.ufetch__main {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+/* 題名は取れた動画の見分けどころなので、1行で切らず2行まで出す。
+   状態と操作は nowrap のまま右に置く */
+.ufetch__name {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: var(--t-body-l);
+  line-height: var(--lh-body-l);
+}
+.ufetch__status {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-body-m);
+  white-space: nowrap;
+}
+.ufetch__sub {
+  font-size: var(--t-body-s);
+  line-height: var(--lh-body-s);
+  color: var(--on-surface-variant);
+  overflow-wrap: anywhere;
+}
+.ufetch__row--err .ufetch__sub {
+  color: inherit;
+}
+/* 44px の面だけ確保して、見た目は M3 text button */
+.ufetch__x {
+  flex: none;
+  min-height: 44px;
+  padding: 0 var(--s-3);
+  border: 0;
+  border-radius: var(--shape-full);
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  font-size: var(--t-label-l);
+  font-weight: var(--w-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--d-tap) var(--ease-effects);
+}
+.ufetch__row--err .ufetch__x {
+  color: inherit;
+}
+.ufetch__x:active {
+  background-color: var(--pressed-primary);
+}
+.ufetch__rej {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+.ufetch__rej + .ufetch__rej {
+  margin-top: var(--s-2);
+}
+.ufetch__rej-url {
+  overflow-wrap: anywhere;
+  /* 地が error 色なので on-surface-variant は使えない（読めない）。濃さだけ落とす */
+  opacity: 0.75;
+}
+
+.upload__bar {
+  height: 4px;
+  background: var(--secondary-container);
+  border-radius: var(--shape-full);
+  overflow: hidden;
+}
+
+/* 伸びは width ではなく scaleX で作る（レイアウトを触らない） */
+.upload__fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: var(--shape-full);
+  transform-origin: left center;
+  transition: transform var(--d-effects) var(--ease-effects);
+}
+
+/* サーバが処理している間。進捗は測れないので往復させる */
+.upload__fill--wait {
+  width: 34%;
+  transform-origin: left center;
+  transition: none;
+  animation: upload-wait 1.5s var(--ease-spatial) infinite;
+}
+
+@keyframes upload-wait {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}

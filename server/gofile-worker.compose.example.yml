@@ -1,0 +1,44 @@
+# nas-app の docker-compose.yml から gofile-worker サービスだけを抜いた例（コメントも原文）。
+# ホストの compose に足す。`/mnt/hdd/kakei` や `.env` は nas-app の置き場所なので、自分の環境に読み替える。
+# api と同じ SQLite ファイル（KAKEI_DB）を共有するのが肝。
+services:
+  # チャットを巻き込まないようにする。HTTPサーバではなく、30分ごとの
+  # 同期ジョブを回し続けるだけの常駐プロセス（外部にポートは公開しない）。
+  #
+  # DBは api と同じファイル (/mnt/hdd/kakei/db/kakei.sqlite3) に相乗りする。
+  # SQLite は WAL + busy_timeout で複数プロセスからの読み書きに耐える
+  # 設計に既にしてある（server/app/db.py）。
+  #
+  # 並列数・再検証件数・ジョブ最大実行時間などは、config.py の
+  # GofileSettings の既定値が既に §14.2 Raspberry Pi 4向け軽量設定なので、
+  # ここでは環境変数を積み増していない（変えたいときだけ environment: に足す）。
+  gofile-worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.gofile-worker
+    container_name: nasapp-gofile-worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      KAKEI_DB: /data/kakei/db/kakei.sqlite3
+      # §14.8の「7日間安定したら再検証数を5→10に広げる」自動昇格を待たず、
+      # 導入から日が浅い今のうちから10に固定する（2026-07-30）。
+      # verify_concurrency=1のままなのでピークメモリは変わらず、
+      # 1回のジョブが長引くだけ（実測5件=40〜80秒→10件でも上限10分に余裕）
+      GOFILE_REVERIFY_BATCH_SIZE: "10"
+    volumes:
+      - /mnt/hdd/kakei:/data/kakei
+    tmpfs:
+      # §14.6: Chromiumの一時データ（プロファイル・キャッシュ）をmicroSDへ
+      # 蓄積させない。RAMベースのtmpfsに置く
+      - /tmp:size=512m
+    # §14.2: Chromium CPU上限0.5〜0.75コア相当・メモリ上限768MBから開始。
+    # Python本体ぶんの余裕を少し足してある
+    cpus: 0.75
+    mem_limit: 900m
+    # ★PID 1 を tini にする（2026-09-12）★
+    # このコンテナは python が PID 1 で、Playwright が閉じた Chromium の
+    # 孫プロセス（headless_shell）が PID 1 に付け替えられたまま回収されない。
+    # 9 日で 820 個のゾンビが溜まっていた。init: true で docker-init(tini) が
+    # PID 1 になり、孤児を wait() して片付ける。python 側の変更は要らない
+    init: true
